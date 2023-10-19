@@ -82,6 +82,18 @@ function(golxzn_add_module)
 	include(${GXZN_PATH}/${GXZN_NAME}/gmodule.cmake)
 endfunction()
 
+function(golxzn_parse_configuration definitions_list arguments)
+	cmake_parse_arguments(GXZN_CONFIG "" "USE_GLOBAL_NAMES" "" ${arguments})
+
+	set(_definitions)
+	if(GXZN_CONFIG_USE_GLOBAL_NAMES)
+		list(APPEND _definitions GOLXZN_USE_GLOBAL_NAMES=1)
+	endif()
+	message(STATUS "[golxzn] Configuration: ${_definitions}")
+	set(${definitions_list} ${_definitions} PARENT_SCOPE)
+	unset(_definitions)
+endfunction()
+
 # Load all modules from the specified directory.
 # The modules are loaded in the order of their priorities.
 # The priority of each module is determined by the file "priority.<number>".
@@ -89,13 +101,17 @@ endfunction()
 #   PATH             - directory containing the modules
 #   DISABLED_MODULES - list of modules to be ignored
 function(golxzn_load_modules)
-	cmake_parse_arguments(GXZN "" "PATH" "DISABLED_MODULES" ${ARGN})
+	cmake_parse_arguments(GXZN "" "PATH" "DISABLED_MODULES;CONFIGURATION" ${ARGN})
 	if(NOT GXZN_PATH)
 		set(GXZN_PATH ${CMAKE_SOURCE_DIR}/modules)
 	endif()
 	message(STATUS "[golxzn] Loading modules from: '${GXZN_PATH}'")
 	if(GXZN_DISABLED_MODULES)
 		message(VERBOSE "[golxzn]     Disabled modules: ${GXZN_DISABLED_MODULES}")
+	endif()
+	if(GXZN_CONFIGURATION)
+		golxzn_parse_configuration(GOLXZN_CONFIG_DEFINITIONS "${GXZN_CONFIGURATION}")
+		message(STATUS "[golxzn]    Found definitions: ${GOLXZN_CONFIG_DEFINITIONS}")
 	endif()
 
 	get_filename_component(GXZN_PATH "${GXZN_PATH}" ABSOLUTE)
@@ -128,6 +144,7 @@ function(golxzn_load_modules)
 		target_link_libraries(golxzn_modules INTERFACE golxzn::${module})
 		target_compile_definitions(golxzn_modules INTERFACE
 			$<TARGET_PROPERTY:golxzn::${module},INTERFACE_COMPILE_DEFINITIONS>
+			${GOLXZN_CONFIG_DEFINITIONS}
 		)
 	endforeach()
 endfunction()
